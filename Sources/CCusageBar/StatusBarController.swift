@@ -75,6 +75,7 @@ final class StatusBarController {
     private func updateUI(usage: UsageResponse?) {
         guard let usage else {
             statusItem.button?.title = "⚠️ Claude: Error"
+            statusItem.button?.image = nil
             updatedItem.title = "⚠️ Fetch failed"
             return
         }
@@ -82,8 +83,8 @@ final class StatusBarController {
         let fivePct = usage.fiveHour?.utilization
         let weekPct = usage.sevenDay?.utilization
 
-        // Menu bar title
-        statusItem.button?.title = formatTitle(fivePct: fivePct, weekPct: weekPct)
+        // Menu bar: text + image bar
+        updateStatusItemTitle(fivePct: fivePct, weekPct: weekPct)
 
         // Dropdown details
         fiveHourItem.title = formatDetail(label: "5-Hour",
@@ -98,37 +99,98 @@ final class StatusBarController {
         updatedItem.title = "Updated: \(formatter.string(from: Date()))"
     }
 
-    // MARK: - Formatting
+    // MARK: - Menu Bar Rendering
 
-    private func formatTitle(fivePct: Double?, weekPct: Double?) -> String {
+    private func updateStatusItemTitle(fivePct: Double?, weekPct: Double?) {
         let fiveStr = fivePct.map { String(format: "%.0f%%", $0) } ?? "--"
-        let fiveBar = makeBar(pct: fivePct ?? 0)
         let weekStr = weekPct.map { String(format: "%.0f%%", $0) } ?? "--"
-        let weekBar = makeBar(pct: weekPct ?? 0)
         let worst = max(fivePct ?? 0, weekPct ?? 0)
         let icon = colorIndicator(pct: worst)
-        return "\(icon) 5h:\(fiveStr) \(fiveBar) | 7d:\(weekStr) \(weekBar)"
+
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+
+        let result = NSMutableAttributedString()
+
+        // Icon + 5h label
+        result.append(NSAttributedString(string: "\(icon) 5h:\(fiveStr) ", attributes: attrs))
+        // 5h bar image
+        result.append(barImageAttachment(pct: fivePct ?? 0, color: barColor(pct: fivePct ?? 0)))
+        // Separator + 7d label
+        result.append(NSAttributedString(string: "  7d:\(weekStr) ", attributes: attrs))
+        // 7d bar image
+        result.append(barImageAttachment(pct: weekPct ?? 0, color: barColor(pct: weekPct ?? 0)))
+
+        statusItem.button?.attributedTitle = result
+        statusItem.button?.image = nil
     }
 
-    private func formatDetail(label: String, pct: Double?, resetsAt: String?) -> String {
-        guard let pct else { return "⚪ \(label):   N/A" }
-        let icon = colorIndicator(pct: pct)
-        let bar = makeBar(pct: pct)
-        let resetStr = resetsAt.flatMap { formatResetTime($0) }.map { "  (resets \($0))" } ?? ""
-        return "\(icon) \(label):   \(String(format: "%.1f%%", pct))  \(bar)\(resetStr)"
+    private func barImageAttachment(pct: Double, color: NSColor) -> NSAttributedString {
+        let barWidth: CGFloat = 48
+        let barHeight: CGFloat = 10
+        let cornerRadius: CGFloat = 2
+
+        let image = NSImage(size: NSSize(width: barWidth, height: barHeight), flipped: false) { rect in
+            // Background (empty bar)
+            let bgColor: NSColor
+            if NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                bgColor = NSColor.white.withAlphaComponent(0.15)
+            } else {
+                bgColor = NSColor.black.withAlphaComponent(0.12)
+            }
+            let bgPath = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
+            bgColor.setFill()
+            bgPath.fill()
+
+            // Filled portion
+            let clamped = max(0, min(100, pct))
+            let filledWidth = rect.width * CGFloat(clamped / 100.0)
+            if filledWidth > 0 {
+                let filledRect = NSRect(x: 0, y: 0, width: filledWidth, height: rect.height)
+                let filledPath = NSBezierPath(roundedRect: filledRect, xRadius: cornerRadius, yRadius: cornerRadius)
+                color.setFill()
+                filledPath.fill()
+            }
+            return true
+        }
+        image.isTemplate = false
+
+        let attachment = NSTextAttachment()
+        attachment.image = image
+        // Vertically center the bar relative to the text baseline
+        attachment.bounds = CGRect(x: 0, y: -1, width: barWidth, height: barHeight)
+        return NSAttributedString(attachment: attachment)
     }
 
-    private func makeBar(pct: Double) -> String {
-        let clamped = max(0, min(100, pct))
-        let filled = Int((clamped / 100.0 * Double(Constants.barLength)).rounded())
-        return String(repeating: Constants.barFilled, count: filled)
-             + String(repeating: Constants.barEmpty, count: Constants.barLength - filled)
+    // MARK: - Colors
+
+    private func barColor(pct: Double) -> NSColor {
+        if pct >= 80 { return NSColor.systemRed }
+        if pct >= 50 { return NSColor.systemOrange }
+        return NSColor.systemGreen
     }
 
     private func colorIndicator(pct: Double) -> String {
         if pct >= 80 { return "🔴" }
         if pct >= 50 { return "🟡" }
         return "🟢"
+    }
+
+    // MARK: - Dropdown Formatting
+
+    private func formatDetail(label: String, pct: Double?, resetsAt: String?) -> String {
+        guard let pct else { return "⚪ \(label):   N/A" }
+        let icon = colorIndicator(pct: pct)
+        let bar = makeTextBar(pct: pct)
+        let resetStr = resetsAt.flatMap { formatResetTime($0) }.map { "  (resets \($0))" } ?? ""
+        return "\(icon) \(label):   \(String(format: "%.1f%%", pct))  \(bar)\(resetStr)"
+    }
+
+    private func makeTextBar(pct: Double) -> String {
+        let clamped = max(0, min(100, pct))
+        let filled = Int((clamped / 100.0 * Double(Constants.barLength)).rounded())
+        return String(repeating: Constants.barFilled, count: filled)
+             + String(repeating: Constants.barEmpty, count: Constants.barLength - filled)
     }
 
     private func formatResetTime(_ isoString: String) -> String? {

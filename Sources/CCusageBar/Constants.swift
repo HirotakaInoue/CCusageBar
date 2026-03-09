@@ -8,7 +8,7 @@ enum Constants {
     static let userAgent = "claude-code/2.0.31"
     static let anthropicBeta = "oauth-2025-04-20"
 
-    static let barFilled: Character = "▓"
+    static let barFilled: Character = "█"
     static let barEmpty: Character = "░"
     static let barLength = 8
 }
