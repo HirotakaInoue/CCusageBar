@@ -41,34 +41,53 @@ The dropdown menu displays:
 
 ## Build
 
+### Xcode
+
 ```bash
-swift build -c release
+open CCusageBar.xcodeproj
 ```
 
-The binary will be at `.build/release/CCusageBar`.
+Xcode で `Cmd+B` (ビルド) or `Cmd+R` (実行)。
 
-For development:
+### コマンドライン
 
 ```bash
-swift run
+xcodebuild -scheme CCusageBar -configuration Release build
+```
+
+### project.yml を変更した場合
+
+```bash
+xcodegen generate
 ```
 
 ## Install
 
+1. Xcode で **Product → Archive** → **Distribute App** → Export で `.app` を取得
+2. `CCusageBar.app` を `/Applications/` にコピー
+3. Spotlight や Launchpad から起動可能
+
+または Release ビルド後に直接コピー:
+
 ```bash
-swift build -c release
-cp .build/release/CCusageBar /usr/local/bin/
+cp -R ~/Library/Developer/Xcode/DerivedData/CCusageBar-*/Build/Products/Release/CCusageBar.app /Applications/
 ```
 
 ## Usage
 
-1. Run `CCusageBar` - it appears in the macOS menu bar.
+1. `CCusageBar.app` を起動 - macOS メニューバーに表示されます（Dock には表示されません）。
 2. Usage percentages and color progress bars are displayed at all times.
 3. Click the menu bar item to see detailed usage with reset times.
 4. Click **Open Usage Page** to view the full usage dashboard.
 5. Click **Refresh Now** to manually update, or wait for the 120-second auto-refresh.
 
-## Auto-Start (LaunchAgent)
+## Auto-Start
+
+**方法 1: macOS ログイン項目（推奨）**
+
+システム設定 → 一般 → ログイン項目 → 「+」 → `/Applications/CCusageBar.app` を追加
+
+**方法 2: LaunchAgent**
 
 ```bash
 cp com.claude.usage-monitor.plist ~/Library/LaunchAgents/

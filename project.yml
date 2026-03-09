@@ -1,0 +1,18 @@
+name: CCusageBar
+options:
+  bundleIdPrefix: com.ccusagebar
+  deploymentTarget:
+    macOS: "13.0"
+targets:
+  CCusageBar:
+    type: application
+    platform: macOS
+    sources:
+      - path: CCusageBar
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.claude.usage-monitor
+        INFOPLIST_FILE: CCusageBar/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: true
+        COMBINE_HIDPI_IMAGES: true
