@@ -7,7 +7,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "CCusageBar",
-            path: "Sources/CCusageBar"
+            path: "Sources/CCusageBar",
+            resources: [
+                .copy("Resources/AppIcon.icns")
+            ]
         )
     ]
 )
